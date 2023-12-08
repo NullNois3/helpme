@@ -1,0 +1,47 @@
+# --- create pool 
+
+gcloud iam workload-identity-pools create tfc-pool \
+    --location="global" \
+    --description="Pool for terraform cloud" \
+    --display-name="TFC Pool"
+
+# --- create provider for pool 
+
+gcloud iam workload-identity-pools providers create-oidc tfc-provider \
+ --location="global" \
+ --workload-identity-pool=tfc-pool \
+ --issuer-uri="https://app.terraform.io" \
+ --attribute-mapping="google.subject=assertion.sub,attribute.terraform_workspace_name=assertion.terraform_workspace_name" \
+ --attribute-condition="assertion.terraform_organization_name==\"PAXO\""
+
+# --- create service account 
+ gcloud iam service-accounts create tfc-workload-identity \
+ --display-name="TFC workload identity"
+
+# --- add permissions to the service account 
+gcloud projects add-iam-policy-binding base-406016 \
+ --member serviceAccount:tfc-workload-identity@base-406016.iam.gserviceaccount.com \
+ --role roles/resourcemanager.projectIamAdmin
+ 
+ # via the console go to the root and add grant the service account created the following role 
+ --role roles/orgpolicy.policyAdmin
+
+# --- connect 
+gcloud iam service-accounts add-iam-policy-binding tfc-workload-identity@base-406016.iam.gserviceaccount.com \
+ --role=roles/iam.workloadIdentityUser \
+ --member="principal://iam.googleapis.com/projects/531342944212/locations/global/workloadIdentityPools/tfc-pool/subject/organization:PAXO:project:gcp:workspace:gcp-org-policy-enforce:run_phase:apply"
+
+gcloud iam service-accounts add-iam-policy-binding tfc-workload-identity@base-406016.iam.gserviceaccount.com \
+ --role=roles/iam.workloadIdentityUser \
+ --member="principalSet://iam.googleapis.com/projects/531342944212/locations/global/workloadIdentityPools/tfc-pool/attribute.terraform_workspace_name/gcp-org-policy-enforce"
+
+
+
+projects/PROJECT-NUMBER/locations/global/workloadIdentityPools/demo-pool/providers/demo-provider
+projects/531342944212/locations/global/workloadIdentityPools/tfc-pool/providers/tfc-provider
+
+
+#COMMANDS TO VERIFY POLICIES 
+gcloud resource-manager org-policies list --organization 
+gcloud resource-manager org-policies list --folder 
+gcloud resource-manager org-policies list --project 
